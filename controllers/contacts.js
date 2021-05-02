@@ -1,24 +1,17 @@
-const express = require('express')
-const router = express.Router();
 const {
 	getContactById,
 	listContacts,
 	removeContact,
 	updateContact,
 	addContact,
-} = require("../../model/contacts.js");
-const { responseHttp } = require("../../helpers/constants");
-const {
-	validationCreatContact,
-	validationUpdateContact,
-	validationObjectId,
-} = require("../validation/validationContacts");
+} = require("../model/contacts.js");
 
-const handleError = require ('../../helpers/hendle-error')
+const { responseHttp } = require("../helpers/constants")
 
-router.get("/", async (req, res, next) => {
+const getAllContacts = async (req, res, next) => {
 	try {
-		const contacts = await listContacts();
+		const userId = req.user ? req.user.id : false
+		const contacts = await listContacts(userId, req.query);
 		return res.json({
 			status: "success",
 			code: responseHttp.OK,
@@ -29,10 +22,11 @@ router.get("/", async (req, res, next) => {
 	} catch (error) {
 		next(error);
 	}
-});
+}
 
-router.get("/:contactId", validationObjectId, async (req, res, next) => {
+const getById = async (req, res, next) => {
 	try {
+		const userId = req.user ? req.user.id : false
 		const contact = await getContactById(req.params.contactId);
 		if (contact) {
 			return res.json({
@@ -52,11 +46,11 @@ router.get("/:contactId", validationObjectId, async (req, res, next) => {
 	} catch (error) {
 		next(error);
 	}
-});
+}
 
-router.post("/", validationCreatContact, handleError (async (req, res, next) => {
-
-		const contact = await addContact(req.body);
+const createContact = async (req, res, next) => {
+		const userId = req.user ? req.user.id : false
+		const contact = await addContact(userId, req.body);
 		return res.status(201).json({
 			status: "success",
 			code: responseHttp.CREATED,
@@ -64,11 +58,13 @@ router.post("/", validationCreatContact, handleError (async (req, res, next) => 
 				contact,
 			},
 		});
-}));
+}
 
-router.delete("/:contactId", async (req, res, next) => {
+const deleteContact = async (req, res, next) => {
 	try {
-		const contact = await removeContact(req.params.contactId);
+
+		const userId = req.user ? req.user.id : false
+		const contact = await removeContact(userId, req.params.contactId);
 		if (contact) {
 			return res.json({
 				status: "success",
@@ -87,14 +83,15 @@ router.delete("/:contactId", async (req, res, next) => {
 	} catch (error) {
 		next(error);
 	}
-});
+}
 
-router.put("/:contactId", validationUpdateContact, async (req, res, next) => {
+const update = async (req, res, next) => {
 	try {
+		const userId = req.user ? req.user.id : false
 		if (!req.body) {
 			return res.status(400).json({ message: "missing fields" });
 		}
-		const contact = await updateContact(req.params.contactId, req.body);
+		const contact = await updateContact(userId, req.params.contactId, req.body);
 		if (contact) {
 			return res.json({
 				status: "success",
@@ -113,14 +110,15 @@ router.put("/:contactId", validationUpdateContact, async (req, res, next) => {
 	} catch (error) {
 		next(error);
 	}
-});
+}
 
-router.patch(':contactId/favorite', async (req, res, next) => {
+const updateStatus = async (req, res, next) => {
 	try {
+		const userId = req.user ? req.user.id : false
 		if (!req.body) {
 			return res.status(400).json({ message: "missing fields favorite" });
 		}
-		const contact = await updateStatusContact(req.params.contactId, req.body);
+		const contact = await updateStatusContact(userId, req.params.contactId, req.body);
 		if (contact) {
 			return res.json({
 				status: "success",
@@ -139,6 +137,40 @@ router.patch(':contactId/favorite', async (req, res, next) => {
 	} catch (error) {
 		next(error);
 	}
-})
+}
 
-module.exports = router;
+const subscriptionStarter = async (req, res, next) => {
+  return res.json({
+  status: 'success',
+  code: 200,
+  data: { message: 'Starter only!', },
+  })
+}
+
+const subscriptionPro = async (req, res, next) => {
+  return res.json({
+  status: 'success',
+  code: 200,
+  data: { message: 'Pro only!', },
+  })
+}
+
+const subscriptionBusiness = async (req, res, next) => {
+  return res.json({
+  status: 'success',
+  code: 200,
+  data: { message: 'Business only!', },
+  })
+}
+
+module.exports = {
+    getAllContacts,
+    getById,
+    createContact,
+    update,
+    updateStatus,
+	deleteContact,
+	subscriptionStarter,
+	subscriptionPro,
+	subscriptionBusiness
+}
