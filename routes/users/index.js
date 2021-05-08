@@ -1,8 +1,9 @@
-const express = require('express');
-const router = express.Router();
-const ctrl = require('../../controllers/users');
+const express = require('express')
+const router = express.Router()
+const ctrl = require('../../controllers/users')
 const guard = require('../../helpers/guard')
 const rateLimit = require("express-rate-limit")
+const uploadAvatar = require('../../helpers/upload-avatar')
 
 const limiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 15 minutes
@@ -18,5 +19,6 @@ const limiter = rateLimit({
 router.post("/signup", limiter, ctrl.register);
 router.post("/login", ctrl.login);
 router.post("/logout", guard, ctrl.logout);
+router.patch("/avatars", guard, uploadAvatar.single('avatar'), ctrl.updateAvatar)
 
 module.exports = router;

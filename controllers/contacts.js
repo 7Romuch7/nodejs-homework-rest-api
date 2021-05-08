@@ -49,6 +49,7 @@ const getById = async (req, res, next) => {
 }
 
 const createContact = async (req, res, next) => {
+	try {
 		const userId = req.user ? req.user.id : false
 		const contact = await addContact(userId, req.body);
 		return res.status(201).json({
@@ -57,7 +58,10 @@ const createContact = async (req, res, next) => {
 			data: {
 				contact,
 			},
-		});
+		})
+	} catch (error) {
+		next(error)
+	}
 }
 
 const deleteContact = async (req, res, next) => {
