@@ -20,5 +20,6 @@ router.post("/signup", limiter, ctrl.register);
 router.post("/login", ctrl.login);
 router.post("/logout", guard, ctrl.logout);
 router.patch("/avatars", guard, uploadAvatar.single('avatar'), ctrl.updateAvatar)
-
+router.get("/users/verify/:verificationToken", ctrl.verify)
+router.post("/users/verify/", ctrl.repitEmailVerify)
 module.exports = router;

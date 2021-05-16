@@ -4,12 +4,16 @@ const fs = require('fs').promises
 const path = require('path')
 require('dotenv').config()
 const Users = require('../model/users')
+const EmailService = require('../services/email')
 const { responseHttp } = require('../helpers/constants')
+const User = require('../model/schemas/user')
+
+
 const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY
 
 const register = async (req, res, next) => {
-    const { email } = req.body
-    const user = await Users.findByEmail(email)
+    
+    const user = await Users.findByEmail(req.body.email)
     if (user) {
         return res.status(responseHttp.CONFLICT).json({
             status: 'error',
@@ -19,14 +23,22 @@ const register = async (req, res, next) => {
     }
     try {
         const newUser = await Users.createUser(req.body)
+        const { id, name, email, subscription, avatarURL, verifyToken } = newUser
+
+        try {
+            const emailService = new EmailService(process.env.NODE_ENV)
+            await emailService.sendVerifyEmail(verifyToken, email, name)
+        } catch (error) {
+            console.log(error.message)
+        }
         return res.status(responseHttp.CREATED).json({
             status: 'success',
             code: responseHttp.CREATED,
             data: {
-                id: newUser.id,
-                email: newUser.email,
-                subscription: newUser.subscription,
-                avatarURL: newUser.avatarURL,
+                id,
+                email,
+                subscription,
+                avatarURL,
             },
         })
     } catch (error) {
@@ -39,7 +51,7 @@ const login = async (req, res, next) => {
         const { email, password } = req.body
         const user = await Users.findByEmail(email)
         const isValidPassword = user ? await user.validPassword(password) : false
-        if (!user || !isValidPassword) {
+        if (!user || !isValidPassword || !user.verify) {
             return res.status(responseHttp.UNAUTHORIZED).json({
                 status: 'error',
                 code: responseHttp.UNAUTHORIZED,
@@ -96,9 +108,56 @@ const saveAvatarUser = async (req) => {
     return path.join(FOLDER_AVATARS, newNameAvatar).replace('\\', '/')
 }
 
+const verify = async (req, res, next) => {
+    try {
+        const user = await User.findByVerifyTokenEmail(req.params.token)
+        if (user) {
+            await Users.updateVerifyToken(user.id, true, null)
+            return res.status(responseHttp.OK).json({
+            status: 'success',
+            code: responseHttp.OK,
+            data: {message: 'Verification successful'},
+        })
+        }
+        return res.status(responseHttp.NOT_FOUND).json({
+            status: 'error',
+            code: responseHttp.NOT_FOUND,
+            message: 'User not found',
+        })
+    } catch (error) {
+        next(error)
+    }
+}
+
+const repitEmailVerify = async (req, res, next) => {
+    try {
+        const user = await Users.findByEmail(req.body.email)
+        if (user) {
+            const { name, email, verifyToken } = user
+        
+            const emailService = new EmailService(process.env.NODE_ENV)
+            await emailService.sendVerifyEmail(verifyToken, email, name)
+            return res.status(responseHttp.OK).json({
+            status: 'success',
+            code: responseHttp.OK,
+            data: {message: 'Verification email sent'},
+        })
+        }
+        return res.status(responseHttp.BAD_REQUEST).json({
+            status: 'error',
+            code: responseHttp.BAD_REQUEST,
+            message: 'Verification has already been passed',
+        })
+    } catch (error) {
+        next(error)
+    }
+}
+
 module.exports = {
     register,
     login,
     logout,
     updateAvatar,
+    verify,
+    repitEmailVerify,
 }
